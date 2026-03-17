@@ -22,10 +22,12 @@ export function TeamCalendarPanel({
   members,
   meetings,
   changeLog,
+  onOpenMeeting,
 }: {
   members: Member[];
   meetings: Meeting[];
   changeLog: NotificationItem[];
+  onOpenMeeting: (meetingId: string) => void;
 }) {
   const [filterParticipantId, setFilterParticipantId] = useState<string>("all");
 
@@ -114,7 +116,13 @@ export function TeamCalendarPanel({
                             {has ? (
                               <div className="space-y-1.5">
                                 {list.slice(0, 3).map((m) => (
-                                  <div key={m.id} className="flex items-start gap-2">
+                                  <button
+                                    key={m.id}
+                                    type="button"
+                                    className="w-full flex items-start gap-2 text-left hover:bg-muted/30 rounded-md p-1 -m-1 transition-colors"
+                                    onClick={() => onOpenMeeting(m.id)}
+                                    title="點擊以編輯/改期"
+                                  >
                                     <Badge variant="secondary" className="text-[10px] h-5">
                                       會議
                                     </Badge>
@@ -126,7 +134,7 @@ export function TeamCalendarPanel({
                                         {m.participantIds.length} 人
                                       </p>
                                     </div>
-                                  </div>
+                                  </button>
                                 ))}
                                 {list.length > 3 && (
                                   <p className="text-[11px] text-muted-foreground">

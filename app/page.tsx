@@ -84,6 +84,8 @@ export default function MeetFlow() {
   const [viewId, setViewId] = useState("xiao-liang");
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [activeTab, setActiveTab] = useState("members");
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
 
   const me = members.find((m) => m.id === "me")!;
   const others = members.filter((m) => m.id !== "me");
@@ -141,7 +143,7 @@ export default function MeetFlow() {
 
       {/* ── Main ── */}
       <main className="max-w-4xl mx-auto px-6 py-8">
-        <Tabs defaultValue="members">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-8 h-10">
             <TabsTrigger value="members" className="gap-1.5 text-sm">
               <Users className="w-3.5 h-3.5" />
@@ -376,6 +378,11 @@ export default function MeetFlow() {
                   ...prev,
                 ])
               }
+              selectedMeetingId={selectedMeetingId}
+              onSelectMeetingId={(id) => {
+                setSelectedMeetingId(id);
+                if (id) setActiveTab("plan");
+              }}
             />
           </TabsContent>
 
@@ -385,6 +392,10 @@ export default function MeetFlow() {
               members={members}
               meetings={meetings}
               changeLog={notifications}
+              onOpenMeeting={(meetingId) => {
+                setSelectedMeetingId(meetingId);
+                setActiveTab("plan");
+              }}
             />
           </TabsContent>
         </Tabs>

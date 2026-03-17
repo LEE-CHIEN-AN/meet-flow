@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Meeting, Member, TimeSlot } from "@/features/scheduling/types";
 import { DAYS, HOURS, formatSlot, slot } from "@/features/scheduling/slot";
 import { detectConflicts } from "@/features/scheduling/conflicts";
@@ -8,6 +8,12 @@ import { recommendSlots } from "@/features/scheduling/recommendation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
 export function MeetingPlannerPanel({
@@ -16,14 +22,22 @@ export function MeetingPlannerPanel({
   onCreateMeeting,
   onUpdateMeeting,
   onNotify,
+  selectedMeetingId,
+  onSelectMeetingId,
 }: {
   members: Member[];
   meetings: Meeting[];
   onCreateMeeting: (meeting: Meeting) => void;
   onUpdateMeeting: (meeting: Meeting) => void;
   onNotify: (message: string) => void;
+  selectedMeetingId: string | null;
+  onSelectMeetingId: (id: string | null) => void;
 }) {
-  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmMode, setConfirmMode] = useState<"update" | "apply_best" | null>(
+    null
+  );
+
   const [meetingTitle, setMeetingTitle] = useState("週會");
   const [meetingSlot, setMeetingSlot] = useState<TimeSlot>(slot(2, 9));
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>(
@@ -58,6 +72,15 @@ export function MeetingPlannerPanel({
     [candidateSlots, members, meetings, selectedParticipantIds]
   );
 
+  useEffect(() => {
+    if (!selectedMeetingId) return;
+    const m = meetings.find((x) => x.id === selectedMeetingId);
+    if (!m) return;
+    setMeetingTitle(m.title);
+    setMeetingSlot(m.slot);
+    setSelectedParticipantIds(m.participantIds);
+  }, [meetings, selectedMeetingId]);
+
   function createMeeting() {
     if (!meetingTitle.trim() || selectedParticipantIds.length === 0) return;
     const m: Meeting = {
@@ -70,11 +93,11 @@ export function MeetingPlannerPanel({
       createdAt: Date.now(),
     };
     onCreateMeeting(m);
-    setSelectedMeetingId(null);
+    onSelectMeetingId(null);
     onNotify(`已建立會議「${m.title}」：${formatSlot(m.slot)}`);
   }
 
-  function updateMeeting() {
+  function doUpdateMeeting() {
     if (!selectedMeetingId) return;
     if (!meetingTitle.trim() || selectedParticipantIds.length === 0) return;
     const existing = meetings.find((m) => m.id === selectedMeetingId);
@@ -89,11 +112,27 @@ export function MeetingPlannerPanel({
     onNotify(`已更新會議「${next.title}」：${formatSlot(next.slot)}`);
   }
 
-  function loadMeeting(m: Meeting) {
-    setSelectedMeetingId(m.id);
-    setMeetingTitle(m.title);
-    setMeetingSlot(m.slot);
-    setSelectedParticipantIds(m.participantIds);
+  function requestUpdateMeeting() {
+    setConfirmMode("update");
+    setConfirmOpen(true);
+  }
+
+  function requestApplyBestAlternative() {
+    setConfirmMode("apply_best");
+    setConfirmOpen(true);
+  }
+
+  function confirm() {
+    if (confirmMode === "update") {
+      doUpdateMeeting();
+    } else if (confirmMode === "apply_best") {
+      const best = recommendations[0];
+      if (!best) return;
+      setMeetingSlot(best.slot);
+      onNotify(`已套用最佳替代時段：${formatSlot(best.slot)}`);
+    }
+    setConfirmOpen(false);
+    setConfirmMode(null);
   }
 
   return (
@@ -167,7 +206,7 @@ export function MeetingPlannerPanel({
             </div>
 
             <Button
-              onClick={selectedMeetingId ? updateMeeting : createMeeting}
+              onClick={selectedMeetingId ? requestUpdateMeeting : createMeeting}
               disabled={selectedParticipantIds.length === 0}
               className="w-full"
             >
@@ -178,11 +217,7 @@ export function MeetingPlannerPanel({
               <Button
                 variant="secondary"
                 className="w-full"
-                onClick={() => {
-                  const best = recommendations[0]!;
-                  setMeetingSlot(best.slot);
-                  onNotify(`已套用最佳替代時段：${formatSlot(best.slot)}`);
-                }}
+                onClick={requestApplyBestAlternative}
               >
                 一鍵套用最佳替代時段
               </Button>
@@ -192,7 +227,7 @@ export function MeetingPlannerPanel({
               <Button
                 variant="outline"
                 className="w-full"
-                onClick={() => setSelectedMeetingId(null)}
+                onClick={() => onSelectMeetingId(null)}
               >
                 取消編輯
               </Button>
@@ -288,7 +323,7 @@ export function MeetingPlannerPanel({
                       className={`w-full text-left rounded-lg border p-3 hover:bg-muted/40 transition-colors ${
                         selectedMeetingId === m.id ? "bg-muted/40" : ""
                       }`}
-                      onClick={() => loadMeeting(m)}
+                      onClick={() => onSelectMeetingId(m.id)}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <p className="font-medium text-sm">{m.title}</p>
@@ -312,6 +347,38 @@ export function MeetingPlannerPanel({
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {confirmMode === "update" ? "確認更新會議" : "確認套用替代時段"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              {confirmMode === "update"
+                ? "系統將更新會議時間/參與者，並同步通知相關人員。"
+                : "系統將套用推薦的最佳替代時段，並同步通知相關人員。"}
+            </p>
+            <div className="rounded-lg border p-3 text-sm">
+              <p className="font-medium">{meetingTitle.trim() || "（未命名）"}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                時段：{formatSlot(confirmMode === "apply_best" ? (recommendations[0]?.slot ?? meetingSlot) : meetingSlot)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                參與者：{selectedParticipantIds.length} 人
+              </p>
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setConfirmOpen(false)}>
+                取消
+              </Button>
+              <Button onClick={confirm}>確認並通知</Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
