@@ -1,10 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { Meeting, Member, TimeSlot } from "@/features/scheduling/types";
+import type {
+  Meeting,
+  MeetingPriority,
+  MeetingType,
+  Member,
+  TimeSlot,
+} from "@/features/scheduling/types";
 import { DAYS, HOURS, formatSlot, slot } from "@/features/scheduling/slot";
 import { detectConflicts } from "@/features/scheduling/conflicts";
 import { recommendSlots } from "@/features/scheduling/recommendation";
+import { meetingTypeLabel, priorityLabel, suggestPriority } from "@/features/scheduling/priority";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -62,6 +69,9 @@ export function MeetingPlannerPanel({
 
   const [meetingTitle, setMeetingTitle] = useState("週會");
   const [meetingSlot, setMeetingSlot] = useState<TimeSlot>(slot(2, 9));
+  const [meetingType, setMeetingType] = useState<MeetingType>("sync");
+  const [priority, setPriority] = useState<MeetingPriority>("normal");
+  const [priorityAuto, setPriorityAuto] = useState(true);
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>(
     ["me", "xiao-liang", "lu-lu"]
   );
@@ -90,8 +100,10 @@ export function MeetingPlannerPanel({
         participantIds: selectedParticipantIds,
         candidateSlots,
         limit: 6,
+        meetingType,
+        meetingPriority: priority,
       }),
-    [candidateSlots, members, meetings, selectedParticipantIds]
+    [candidateSlots, members, meetings, meetingType, priority, selectedParticipantIds]
   );
 
   useEffect(() => {
@@ -101,6 +113,9 @@ export function MeetingPlannerPanel({
     setMeetingTitle(m.title);
     setMeetingSlot(m.slot);
     setSelectedParticipantIds(m.participantIds);
+    setMeetingType(m.meetingType ?? "sync");
+    setPriority(m.priority ?? "normal");
+    setPriorityAuto(false);
   }, [meetings, selectedMeetingId]);
 
   useEffect(() => {
@@ -108,6 +123,11 @@ export function MeetingPlannerPanel({
     if (!draftSlot) return;
     setMeetingSlot(draftSlot);
   }, [draftSlot, selectedMeetingId]);
+
+  useEffect(() => {
+    if (!priorityAuto) return;
+    setPriority(suggestPriority(meetingType));
+  }, [meetingType, priorityAuto]);
 
   useEffect(() => {
     // When navigation jumps here from calendar, focus the title for fast editing
@@ -126,7 +146,8 @@ export function MeetingPlannerPanel({
       slot: meetingSlot,
       durationHours: 1,
       participantIds: selectedParticipantIds,
-      priority: "normal",
+      meetingType,
+      priority,
       createdAt: Date.now(),
     };
     onCreateMeeting(m);
@@ -146,6 +167,8 @@ export function MeetingPlannerPanel({
       title: meetingTitle.trim(),
       slot: meetingSlot,
       participantIds: selectedParticipantIds,
+      meetingType,
+      priority,
     };
     onUpdateMeeting(next);
     onNotify(`已更新會議「${next.title}」：${formatSlot(next.slot)}`);
@@ -199,6 +222,45 @@ export function MeetingPlannerPanel({
                 value={meetingTitle}
                 onChange={(e) => setMeetingTitle(e.target.value)}
               />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <p className="text-sm font-medium">會議性質</p>
+                <select
+                  className="w-full h-10 rounded-md border bg-background px-3 text-sm"
+                  value={meetingType}
+                  onChange={(e) => setMeetingType(e.target.value as MeetingType)}
+                >
+                  <option value="decision">{meetingTypeLabel("decision")}</option>
+                  <option value="sync">{meetingTypeLabel("sync")}</option>
+                  <option value="discussion">{meetingTypeLabel("discussion")}</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium">優先順序</p>
+                  <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <input
+                      type="checkbox"
+                      checked={priorityAuto}
+                      onChange={(e) => setPriorityAuto(e.target.checked)}
+                    />
+                    自動
+                  </label>
+                </div>
+                <select
+                  className="w-full h-10 rounded-md border bg-background px-3 text-sm"
+                  value={priority}
+                  disabled={priorityAuto}
+                  onChange={(e) => setPriority(e.target.value as MeetingPriority)}
+                >
+                  <option value="high">{priorityLabel("high")}</option>
+                  <option value="normal">{priorityLabel("normal")}</option>
+                  <option value="low">{priorityLabel("low")}</option>
+                </select>
+              </div>
             </div>
 
             <div className="space-y-2">
