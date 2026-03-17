@@ -100,8 +100,9 @@ export default function MeetFlow() {
   const commonSlots = computeCommonSlots(members, meetings, universeSlots);
 
   useEffect(() => {
+    // Only auto-scroll when we intentionally navigated here (from calendar actions)
+    if (plannerFocusNonce === 0) return;
     if (activeTab !== "plan") return;
-    // Ensure the user lands at the planner top when jumping from calendar
     window.requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: "smooth" });
     });
