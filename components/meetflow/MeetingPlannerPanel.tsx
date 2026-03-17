@@ -165,7 +165,7 @@ export function MeetingPlannerPanel({
       const best = recommendations[0];
       if (!best) return;
       setMeetingSlot(best.slot);
-      onNotify(`已套用最佳替代時段：${formatSlot(best.slot)}`);
+      // 套用替代時段屬於「草稿調整」，不視為同步通知事件
     }
     setConfirmOpen(false);
     setConfirmMode(null);
@@ -399,7 +399,7 @@ export function MeetingPlannerPanel({
             <p className="text-sm text-muted-foreground">
               {confirmMode === "update"
                 ? "系統將更新會議時間/參與者，並同步通知相關人員。"
-                : "系統將套用推薦的最佳替代時段，並同步通知相關人員。"}
+                : "系統將套用推薦的最佳替代時段（僅更新草稿，不會同步通知）。"}
             </p>
             <div className="rounded-lg border p-3 text-sm">
               <p className="font-medium">{meetingTitle.trim() || "（未命名）"}</p>
@@ -414,7 +414,9 @@ export function MeetingPlannerPanel({
               <Button variant="outline" onClick={() => setConfirmOpen(false)}>
                 取消
               </Button>
-              <Button onClick={confirm}>確認並通知</Button>
+              <Button onClick={confirm}>
+                {confirmMode === "update" ? "確認並通知" : "確認套用"}
+              </Button>
             </div>
           </div>
         </DialogContent>
