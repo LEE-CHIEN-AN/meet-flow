@@ -11,6 +11,7 @@ export type Member = {
 export type MeetingPriority = "low" | "normal" | "high";
 
 export type MeetingType = "decision" | "sync" | "discussion";
+export type MeetingStatus = "scheduled" | "cancelled";
 
 export type Meeting = {
   id: string;
@@ -20,6 +21,7 @@ export type Meeting = {
   participantIds: string[];
   meetingType: MeetingType;
   priority: MeetingPriority;
+  status?: MeetingStatus; // default: scheduled
   createdAt: number;
 };
 

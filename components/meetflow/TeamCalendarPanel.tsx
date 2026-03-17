@@ -41,6 +41,7 @@ export function TeamCalendarPanel({
   const meetingsBySlot = useMemo(() => {
     const map = new Map<string, Meeting[]>();
     for (const m of filteredMeetings) {
+      if (m.status === "cancelled") continue;
       const arr = map.get(m.slot) ?? [];
       arr.push(m);
       map.set(m.slot, arr);

@@ -391,6 +391,16 @@ export default function MeetFlow() {
               onUpdateMeeting={(m) =>
                 setMeetings((prev) => prev.map((x) => (x.id === m.id ? m : x)))
               }
+              onCancelMeeting={(meetingId) =>
+                setMeetings((prev) =>
+                  prev.map((m) =>
+                    m.id === meetingId ? { ...m, status: "cancelled" } : m
+                  )
+                )
+              }
+              onDeleteMeeting={(meetingId) =>
+                setMeetings((prev) => prev.filter((m) => m.id !== meetingId))
+              }
               onNotify={(message) =>
                 setNotifications((prev) => [
                   {

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   Meeting,
   MeetingPriority,
+  MeetingStatus,
   MeetingType,
   Member,
   TimeSlot,
@@ -40,6 +41,8 @@ export function MeetingPlannerPanel({
   meetings,
   onCreateMeeting,
   onUpdateMeeting,
+  onCancelMeeting,
+  onDeleteMeeting,
   onNotify,
   onNavigateToCalendar,
   selectedMeetingId,
@@ -52,6 +55,8 @@ export function MeetingPlannerPanel({
   meetings: Meeting[];
   onCreateMeeting: (meeting: Meeting) => void;
   onUpdateMeeting: (meeting: Meeting) => void;
+  onCancelMeeting: (meetingId: string) => void;
+  onDeleteMeeting: (meetingId: string) => void;
   onNotify: (message: string) => void;
   onNavigateToCalendar: () => void;
   selectedMeetingId: string | null;
@@ -61,9 +66,9 @@ export function MeetingPlannerPanel({
   focusNonce: number;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [confirmMode, setConfirmMode] = useState<"update" | "apply_best" | null>(
-    null
-  );
+  const [confirmMode, setConfirmMode] = useState<
+    "update" | "apply_best" | "cancel" | "delete" | null
+  >(null);
 
   const titleRef = useRef<HTMLInputElement | null>(null);
 
@@ -118,6 +123,11 @@ export function MeetingPlannerPanel({
     setPriorityAuto(false);
   }, [meetings, selectedMeetingId]);
 
+  const selectedMeeting = useMemo(
+    () => (selectedMeetingId ? meetings.find((m) => m.id === selectedMeetingId) : undefined),
+    [meetings, selectedMeetingId]
+  );
+
   useEffect(() => {
     if (selectedMeetingId) return;
     if (!draftSlot) return;
@@ -148,6 +158,7 @@ export function MeetingPlannerPanel({
       participantIds: selectedParticipantIds,
       meetingType,
       priority,
+      status: "scheduled",
       createdAt: Date.now(),
     };
     onCreateMeeting(m);
@@ -185,6 +196,18 @@ export function MeetingPlannerPanel({
     setConfirmOpen(true);
   }
 
+  function requestCancelMeeting() {
+    if (!selectedMeetingId) return;
+    setConfirmMode("cancel");
+    setConfirmOpen(true);
+  }
+
+  function requestDeleteMeeting() {
+    if (!selectedMeetingId) return;
+    setConfirmMode("delete");
+    setConfirmOpen(true);
+  }
+
   function confirm() {
     if (confirmMode === "update") {
       doUpdateMeeting();
@@ -193,6 +216,18 @@ export function MeetingPlannerPanel({
       if (!best) return;
       setMeetingSlot(best.slot);
       // 套用替代時段屬於「草稿調整」，不視為同步通知事件
+    } else if (confirmMode === "cancel") {
+      if (!selectedMeetingId) return;
+      onCancelMeeting(selectedMeetingId);
+      onNotify(`已取消會議「${meetingTitle.trim() || "（未命名）"}」`);
+      onSelectMeetingId(null);
+      onNavigateToCalendar();
+    } else if (confirmMode === "delete") {
+      if (!selectedMeetingId) return;
+      onDeleteMeeting(selectedMeetingId);
+      onNotify(`已刪除會議「${meetingTitle.trim() || "（未命名）"}」`);
+      onSelectMeetingId(null);
+      onNavigateToCalendar();
     }
     setConfirmOpen(false);
     setConfirmMode(null);
@@ -318,6 +353,17 @@ export function MeetingPlannerPanel({
             >
               {selectedMeetingId ? "更新會議" : "建立會議"}
             </Button>
+
+            {selectedMeetingId && (
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={requestCancelMeeting}>
+                  取消會議
+                </Button>
+                <Button variant="destructive" onClick={requestDeleteMeeting}>
+                  刪除
+                </Button>
+              </div>
+            )}
 
             {meetingConflicts.length > 0 && recommendations.length > 0 && (
               <Button
@@ -465,14 +511,24 @@ export function MeetingPlannerPanel({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {confirmMode === "update" ? "確認更新會議" : "確認套用替代時段"}
+              {confirmMode === "update"
+                ? "確認更新會議"
+                : confirmMode === "apply_best"
+                  ? "確認套用替代時段"
+                  : confirmMode === "cancel"
+                    ? "確認取消會議"
+                    : "確認刪除會議"}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               {confirmMode === "update"
                 ? "系統將更新會議時間/參與者，並同步通知相關人員。"
-                : "系統將套用推薦的最佳替代時段（僅更新草稿，不會同步通知）。"}
+                : confirmMode === "apply_best"
+                  ? "系統將套用推薦的最佳替代時段（僅更新草稿，不會同步通知）。"
+                  : confirmMode === "cancel"
+                    ? "系統將取消此會議（從行事曆移除），並同步通知相關人員。"
+                    : "系統將永久刪除此會議（不可復原），並同步通知相關人員。"}
             </p>
             <div className="rounded-lg border p-3 text-sm">
               <p className="font-medium">{meetingTitle.trim() || "（未命名）"}</p>
@@ -482,13 +538,24 @@ export function MeetingPlannerPanel({
               <p className="text-xs text-muted-foreground mt-1">
                 參與者：{selectedParticipantIds.length} 人
               </p>
+              {selectedMeeting?.status === "cancelled" && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  狀態：已取消
+                </p>
+              )}
             </div>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setConfirmOpen(false)}>
                 取消
               </Button>
               <Button onClick={confirm}>
-                {confirmMode === "update" ? "確認並通知" : "確認套用"}
+                {confirmMode === "update"
+                  ? "確認並通知"
+                  : confirmMode === "apply_best"
+                    ? "確認套用"
+                    : confirmMode === "cancel"
+                      ? "確認取消"
+                      : "確認刪除"}
               </Button>
             </div>
           </div>

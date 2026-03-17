@@ -65,7 +65,10 @@ export function WorkloadPanel({
   const member = members.find((m) => m.id === memberId) ?? members[0];
 
   const myMeetings = useMemo(
-    () => meetings.filter((m) => m.participantIds.includes(memberId)),
+    () =>
+      meetings.filter(
+        (m) => m.participantIds.includes(memberId) && m.status !== "cancelled"
+      ),
     [meetings, memberId]
   );
 

@@ -5,6 +5,7 @@ export function meetingBlocksSlot(
   participantId: string,
   s: TimeSlot
 ): boolean {
+  if (meeting.status === "cancelled") return false;
   if (!meeting.participantIds.includes(participantId)) return false;
   // MVP: durationHours=1 only; keep API ready for extension
   return meeting.slot === s;
