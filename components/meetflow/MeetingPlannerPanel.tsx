@@ -15,11 +15,13 @@ export function MeetingPlannerPanel({
   meetings,
   onCreateMeeting,
   onUpdateMeeting,
+  onNotify,
 }: {
   members: Member[];
   meetings: Meeting[];
   onCreateMeeting: (meeting: Meeting) => void;
   onUpdateMeeting: (meeting: Meeting) => void;
+  onNotify: (message: string) => void;
 }) {
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
   const [meetingTitle, setMeetingTitle] = useState("週會");
@@ -69,6 +71,7 @@ export function MeetingPlannerPanel({
     };
     onCreateMeeting(m);
     setSelectedMeetingId(null);
+    onNotify(`已建立會議「${m.title}」：${formatSlot(m.slot)}`);
   }
 
   function updateMeeting() {
@@ -76,12 +79,14 @@ export function MeetingPlannerPanel({
     if (!meetingTitle.trim() || selectedParticipantIds.length === 0) return;
     const existing = meetings.find((m) => m.id === selectedMeetingId);
     if (!existing) return;
-    onUpdateMeeting({
+    const next = {
       ...existing,
       title: meetingTitle.trim(),
       slot: meetingSlot,
       participantIds: selectedParticipantIds,
-    });
+    };
+    onUpdateMeeting(next);
+    onNotify(`已更新會議「${next.title}」：${formatSlot(next.slot)}`);
   }
 
   function loadMeeting(m: Meeting) {
@@ -168,6 +173,20 @@ export function MeetingPlannerPanel({
             >
               {selectedMeetingId ? "更新會議" : "建立會議"}
             </Button>
+
+            {meetingConflicts.length > 0 && recommendations.length > 0 && (
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => {
+                  const best = recommendations[0]!;
+                  setMeetingSlot(best.slot);
+                  onNotify(`已套用最佳替代時段：${formatSlot(best.slot)}`);
+                }}
+              >
+                一鍵套用最佳替代時段
+              </Button>
+            )}
 
             {selectedMeetingId && (
               <Button

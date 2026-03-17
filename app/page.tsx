@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Plus, Users, Calendar, User, CalendarCheck } from "lucide-react";
 import { Legend } from "@/components/meetflow/Legend";
 import { MeetingPlannerPanel } from "@/components/meetflow/MeetingPlannerPanel";
+import { Notifications, type NotificationItem } from "@/components/meetflow/Notifications";
 import { ScheduleGrid } from "@/components/meetflow/ScheduleGrid";
 import type { Member, TimeSlot, Meeting } from "@/features/scheduling/types";
 import { DAYS, HOURS, formatSlot, slot } from "@/features/scheduling/slot";
@@ -81,6 +82,7 @@ export default function MeetFlow() {
   const [open, setOpen] = useState(false);
   const [viewId, setViewId] = useState("xiao-liang");
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
 
   const me = members.find((m) => m.id === "me")!;
   const others = members.filter((m) => m.id !== "me");
@@ -133,6 +135,7 @@ export default function MeetFlow() {
             Beta
           </Badge>
         </div>
+        <Notifications items={notifications} />
       </header>
 
       {/* ── Main ── */}
@@ -361,6 +364,12 @@ export default function MeetFlow() {
               onCreateMeeting={(m) => setMeetings((prev) => [m, ...prev])}
               onUpdateMeeting={(m) =>
                 setMeetings((prev) => prev.map((x) => (x.id === m.id ? m : x)))
+              }
+              onNotify={(message) =>
+                setNotifications((prev) => [
+                  { id: `n-${Date.now()}`, message, createdAt: Date.now() },
+                  ...prev,
+                ])
               }
             />
           </TabsContent>
