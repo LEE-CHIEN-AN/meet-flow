@@ -370,6 +370,13 @@ export function MeetingPlannerPanel({
             <CardTitle className="text-base font-semibold">
               推薦時段（Top 6）
             </CardTitle>
+            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+              分數計算（越高越推薦）：
+              <br />
+              score = 出席人數×A − 忙碌衝突人數×B − 不可用人數×C − 晚間懲罰
+              <br />
+              A/B/C 依優先順序而變：高（14/9/4）、中（10/6/3）、低（7/4/2）；晚間懲罰依會議性質調整（決策型更避晚、討論型較彈性）。
+            </p>
           </CardHeader>
           <CardContent className="space-y-3">
             {recommendations.length === 0 ? (
