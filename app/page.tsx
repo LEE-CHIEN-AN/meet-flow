@@ -396,6 +396,10 @@ export default function MeetFlow() {
                   ...prev,
                 ])
               }
+              onNavigateToCalendar={() => {
+                setActiveTab("team-calendar");
+                setPlannerFocusNonce(0);
+              }}
               selectedMeetingId={selectedMeetingId}
               onSelectMeetingId={(id) => {
                 setSelectedMeetingId(id);

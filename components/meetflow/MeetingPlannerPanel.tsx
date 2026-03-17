@@ -34,6 +34,7 @@ export function MeetingPlannerPanel({
   onCreateMeeting,
   onUpdateMeeting,
   onNotify,
+  onNavigateToCalendar,
   selectedMeetingId,
   onSelectMeetingId,
   draftSlot,
@@ -45,6 +46,7 @@ export function MeetingPlannerPanel({
   onCreateMeeting: (meeting: Meeting) => void;
   onUpdateMeeting: (meeting: Meeting) => void;
   onNotify: (message: string) => void;
+  onNavigateToCalendar: () => void;
   selectedMeetingId: string | null;
   onSelectMeetingId: (id: string | null) => void;
   draftSlot: TimeSlot | null;
@@ -131,6 +133,7 @@ export function MeetingPlannerPanel({
     onSelectMeetingId(null);
     onDraftSlotChange(null);
     onNotify(`已建立會議「${m.title}」：${formatSlot(m.slot)}`);
+    onNavigateToCalendar();
   }
 
   function doUpdateMeeting() {
@@ -146,6 +149,7 @@ export function MeetingPlannerPanel({
     };
     onUpdateMeeting(next);
     onNotify(`已更新會議「${next.title}」：${formatSlot(next.slot)}`);
+    onNavigateToCalendar();
   }
 
   function requestUpdateMeeting() {
