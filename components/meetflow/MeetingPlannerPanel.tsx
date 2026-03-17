@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Meeting, Member, TimeSlot } from "@/features/scheduling/types";
 import { DAYS, HOURS, formatSlot, slot } from "@/features/scheduling/slot";
 import { detectConflicts } from "@/features/scheduling/conflicts";
@@ -38,6 +38,7 @@ export function MeetingPlannerPanel({
   onSelectMeetingId,
   draftSlot,
   onDraftSlotChange,
+  focusNonce,
 }: {
   members: Member[];
   meetings: Meeting[];
@@ -48,11 +49,14 @@ export function MeetingPlannerPanel({
   onSelectMeetingId: (id: string | null) => void;
   draftSlot: TimeSlot | null;
   onDraftSlotChange: (slotId: TimeSlot | null) => void;
+  focusNonce: number;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMode, setConfirmMode] = useState<"update" | "apply_best" | null>(
     null
   );
+
+  const titleRef = useRef<HTMLInputElement | null>(null);
 
   const [meetingTitle, setMeetingTitle] = useState("週會");
   const [meetingSlot, setMeetingSlot] = useState<TimeSlot>(slot(2, 9));
@@ -102,6 +106,15 @@ export function MeetingPlannerPanel({
     if (!draftSlot) return;
     setMeetingSlot(draftSlot);
   }, [draftSlot, selectedMeetingId]);
+
+  useEffect(() => {
+    // When navigation jumps here from calendar, focus the title for fast editing
+    const id = window.setTimeout(() => {
+      titleRef.current?.focus();
+      titleRef.current?.select?.();
+    }, 0);
+    return () => window.clearTimeout(id);
+  }, [focusNonce]);
 
   function createMeeting() {
     if (!meetingTitle.trim() || selectedParticipantIds.length === 0) return;
@@ -178,6 +191,7 @@ export function MeetingPlannerPanel({
             <div className="space-y-2">
               <p className="text-sm font-medium">標題</p>
               <Input
+                ref={titleRef}
                 value={meetingTitle}
                 onChange={(e) => setMeetingTitle(e.target.value)}
               />

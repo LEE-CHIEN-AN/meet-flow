@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -87,6 +87,7 @@ export default function MeetFlow() {
   const [activeTab, setActiveTab] = useState("members");
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
   const [draftMeetingSlot, setDraftMeetingSlot] = useState<TimeSlot | null>(null);
+  const [plannerFocusNonce, setPlannerFocusNonce] = useState(0);
 
   const me = members.find((m) => m.id === "me")!;
   const others = members.filter((m) => m.id !== "me");
@@ -97,6 +98,14 @@ export default function MeetFlow() {
   );
 
   const commonSlots = computeCommonSlots(members, meetings, universeSlots);
+
+  useEffect(() => {
+    if (activeTab !== "plan") return;
+    // Ensure the user lands at the planner top when jumping from calendar
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }, [activeTab, plannerFocusNonce]);
 
   function batchToggleMySlots(slots: TimeSlot[], fill: boolean) {
     setMembers((prev) =>
@@ -394,6 +403,7 @@ export default function MeetFlow() {
               }}
               draftSlot={draftMeetingSlot}
               onDraftSlotChange={setDraftMeetingSlot}
+              focusNonce={plannerFocusNonce}
             />
           </TabsContent>
 
@@ -407,11 +417,13 @@ export default function MeetFlow() {
                 setSelectedMeetingId(meetingId);
                 setDraftMeetingSlot(null);
                 setActiveTab("plan");
+                setPlannerFocusNonce((x) => x + 1);
               }}
               onCreateAtSlot={(s) => {
                 setSelectedMeetingId(null);
                 setDraftMeetingSlot(s);
                 setActiveTab("plan");
+                setPlannerFocusNonce((x) => x + 1);
               }}
             />
           </TabsContent>
