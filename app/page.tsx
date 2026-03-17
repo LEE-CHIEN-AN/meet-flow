@@ -19,6 +19,7 @@ import { Legend } from "@/components/meetflow/Legend";
 import { MeetingPlannerPanel } from "@/components/meetflow/MeetingPlannerPanel";
 import { Notifications, type NotificationItem } from "@/components/meetflow/Notifications";
 import { ScheduleGrid } from "@/components/meetflow/ScheduleGrid";
+import { TeamCalendarPanel } from "@/components/meetflow/TeamCalendarPanel";
 import type { Member, TimeSlot, Meeting } from "@/features/scheduling/types";
 import { DAYS, HOURS, formatSlot, slot } from "@/features/scheduling/slot";
 import { commonSlots as computeCommonSlots } from "@/features/scheduling/availability";
@@ -161,6 +162,10 @@ export default function MeetFlow() {
             <TabsTrigger value="plan" className="gap-1.5 text-sm">
               <CalendarCheck className="w-3.5 h-3.5" />
               會議推薦
+            </TabsTrigger>
+            <TabsTrigger value="team-calendar" className="gap-1.5 text-sm">
+              <Calendar className="w-3.5 h-3.5" />
+              團隊行事曆
             </TabsTrigger>
           </TabsList>
 
@@ -371,6 +376,15 @@ export default function MeetFlow() {
                   ...prev,
                 ])
               }
+            />
+          </TabsContent>
+
+          {/* ── Tab 6: Team Calendar ── */}
+          <TabsContent value="team-calendar">
+            <TeamCalendarPanel
+              members={members}
+              meetings={meetings}
+              changeLog={notifications}
             />
           </TabsContent>
         </Tabs>
