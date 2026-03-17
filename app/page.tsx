@@ -15,22 +15,18 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Plus, Users, Calendar, User, CalendarCheck } from "lucide-react";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type TimeSlot = string; // "day-hour", e.g. "0-9" = Monday 9am
-
-type Member = {
-  id: string;
-  name: string;
-  color: string;
-  availability: TimeSlot[];
-};
+import { Legend } from "@/components/meetflow/Legend";
+import { MeetingPlannerPanel } from "@/components/meetflow/MeetingPlannerPanel";
+import { Notifications, type NotificationItem } from "@/components/meetflow/Notifications";
+import { ScheduleGrid } from "@/components/meetflow/ScheduleGrid";
+import { TeamCalendarPanel } from "@/components/meetflow/TeamCalendarPanel";
+import { WorkloadPanel } from "@/components/meetflow/WorkloadPanel";
+import type { Member, TimeSlot, Meeting } from "@/features/scheduling/types";
+import { DAYS, HOURS, formatSlot, slot } from "@/features/scheduling/slot";
+import { commonSlots as computeCommonSlots } from "@/features/scheduling/availability";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DAYS = ["週一", "週二", "週三", "週四", "週五"];
-const HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17];
 const COLORS = [
   "bg-orange-500",
   "bg-pink-500",
@@ -40,8 +36,6 @@ const COLORS = [
   "bg-yellow-500",
   "bg-cyan-500",
 ];
-
-const slot = (day: number, hour: number): TimeSlot => `${day}-${hour}`;
 
 // ─── Fake initial data ────────────────────────────────────────────────────────
 
@@ -58,6 +52,7 @@ const INITIAL_MEMBERS: Member[] = [
       slot(3, 14), slot(3, 15), slot(3, 16),         // Thu 14–17
       slot(4, 9),  slot(4, 10),                      // Fri 9–11
     ],
+    externalBusy: [slot(0, 10), slot(3, 15)], // 模擬 Google Calendar 忙碌
   },
   {
     id: "xiao-liang",
@@ -69,6 +64,7 @@ const INITIAL_MEMBERS: Member[] = [
       slot(2, 14), slot(2, 15), slot(2, 16),         // Wed 14–17
       slot(4, 9),  slot(4, 10),                      // Fri 9–11
     ],
+    externalBusy: [slot(2, 10)], // 模擬外部行程
   },
   {
     id: "lu-lu",
@@ -227,17 +223,33 @@ export default function MeetFlow() {
   const [newName, setNewName] = useState("");
   const [open, setOpen] = useState(false);
   const [viewId, setViewId] = useState("xiao-liang");
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [activeTab, setActiveTab] = useState("members");
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
+  const [draftMeetingSlot, setDraftMeetingSlot] = useState<TimeSlot | null>(null);
+  const [plannerFocusNonce, setPlannerFocusNonce] = useState(0);
 
   const me = members.find((m) => m.id === "me")!;
   const others = members.filter((m) => m.id !== "me");
   const viewing = members.find((m) => m.id === viewId) ?? others[0];
 
-  const commonSlots = DAYS.flatMap((_, d) =>
-    HOURS.filter((h) =>
-      members.every((m) => m.availability.includes(slot(d, h)))
-    ).map((h) => slot(d, h))
+  const universeSlots: TimeSlot[] = DAYS.flatMap((_, d) =>
+    HOURS.map((h) => slot(d, h))
   );
 
+  const commonSlots = computeCommonSlots(members, meetings, universeSlots);
+
+  useEffect(() => {
+    // Only auto-scroll when we intentionally navigated here (from calendar actions)
+    if (plannerFocusNonce === 0) return;
+    if (activeTab !== "plan") return;
+    window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }, [activeTab, plannerFocusNonce]);
+
+  function batchToggleMySlots(slots: TimeSlot[], fill: boolean) {
   function batchToggleMySlots(slots: TimeSlot[], fill: boolean) {
     setMembers((prev) =>
       prev.map((m) =>
@@ -245,6 +257,9 @@ export default function MeetFlow() {
           ? m
           : {
               ...m,
+              availability: fill
+                ? [...new Set([...m.availability, ...slots])]
+                : m.availability.filter((x) => !slots.includes(x)),
               availability: fill
                 ? [...new Set([...m.availability, ...slots])]
                 : m.availability.filter((x) => !slots.includes(x)),
@@ -279,11 +294,12 @@ export default function MeetFlow() {
             Beta
           </Badge>
         </div>
+        <Notifications items={notifications} />
       </header>
 
       {/* ── Main ── */}
       <main className="max-w-4xl mx-auto px-6 py-8">
-        <Tabs defaultValue="members">
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-8 h-10">
             <TabsTrigger value="members" className="gap-1.5 text-sm">
               <Users className="w-3.5 h-3.5" />
@@ -300,6 +316,18 @@ export default function MeetFlow() {
             <TabsTrigger value="common" className="gap-1.5 text-sm">
               <CalendarCheck className="w-3.5 h-3.5" />
               共同空閒
+            </TabsTrigger>
+            <TabsTrigger value="plan" className="gap-1.5 text-sm">
+              <CalendarCheck className="w-3.5 h-3.5" />
+              會議推薦
+            </TabsTrigger>
+            <TabsTrigger value="team-calendar" className="gap-1.5 text-sm">
+              <Calendar className="w-3.5 h-3.5" />
+              團隊行事曆
+            </TabsTrigger>
+            <TabsTrigger value="workload" className="gap-1.5 text-sm">
+              <User className="w-3.5 h-3.5" />
+              負載
             </TabsTrigger>
           </TabsList>
 
@@ -373,6 +401,7 @@ export default function MeetFlow() {
               <h2 className="text-base font-semibold">我的時間表</h2>
               <p className="text-sm text-muted-foreground mt-0.5">
                 點擊或拖曳選取矩形範圍來批次切換空閒時段
+                點擊或拖曳選取矩形範圍來批次切換空閒時段
               </p>
             </div>
             <Card>
@@ -385,6 +414,7 @@ export default function MeetFlow() {
                 />
                 <ScheduleGrid
                   availability={me.availability}
+                  onBatchToggle={batchToggleMySlots}
                   onBatchToggle={batchToggleMySlots}
                 />
               </CardContent>
@@ -493,6 +523,80 @@ export default function MeetFlow() {
                 })}
               </div>
             )}
+          </TabsContent>
+
+          {/* ── Tab 5: Meeting Planner ── */}
+          <TabsContent value="plan">
+            <MeetingPlannerPanel
+              members={members}
+              meetings={meetings}
+              onCreateMeeting={(m) => setMeetings((prev) => [m, ...prev])}
+              onUpdateMeeting={(m) =>
+                setMeetings((prev) => prev.map((x) => (x.id === m.id ? m : x)))
+              }
+              onCancelMeeting={(meetingId) =>
+                setMeetings((prev) =>
+                  prev.map((m) =>
+                    m.id === meetingId ? { ...m, status: "cancelled" } : m
+                  )
+                )
+              }
+              onDeleteMeeting={(meetingId) =>
+                setMeetings((prev) => prev.filter((m) => m.id !== meetingId))
+              }
+              onNotify={(message) =>
+                setNotifications((prev) => [
+                  {
+                    id:
+                      (globalThis.crypto?.randomUUID
+                        ? `n-${globalThis.crypto.randomUUID()}`
+                        : `n-${Date.now()}-${Math.random().toString(16).slice(2)}`),
+                    message,
+                    createdAt: Date.now(),
+                  },
+                  ...prev,
+                ])
+              }
+              onNavigateToCalendar={() => {
+                setActiveTab("team-calendar");
+                setPlannerFocusNonce(0);
+              }}
+              selectedMeetingId={selectedMeetingId}
+              onSelectMeetingId={(id) => {
+                setSelectedMeetingId(id);
+                if (id) setDraftMeetingSlot(null);
+                if (id) setActiveTab("plan");
+              }}
+              draftSlot={draftMeetingSlot}
+              onDraftSlotChange={setDraftMeetingSlot}
+              focusNonce={plannerFocusNonce}
+            />
+          </TabsContent>
+
+          {/* ── Tab 6: Team Calendar ── */}
+          <TabsContent value="team-calendar">
+            <TeamCalendarPanel
+              members={members}
+              meetings={meetings}
+              changeLog={notifications}
+              onOpenMeeting={(meetingId) => {
+                setSelectedMeetingId(meetingId);
+                setDraftMeetingSlot(null);
+                setActiveTab("plan");
+                setPlannerFocusNonce((x) => x + 1);
+              }}
+              onCreateAtSlot={(s) => {
+                setSelectedMeetingId(null);
+                setDraftMeetingSlot(s);
+                setActiveTab("plan");
+                setPlannerFocusNonce((x) => x + 1);
+              }}
+            />
+          </TabsContent>
+
+          {/* ── Tab 7: Workload ── */}
+          <TabsContent value="workload">
+            <WorkloadPanel members={members} meetings={meetings} />
           </TabsContent>
         </Tabs>
       </main>
