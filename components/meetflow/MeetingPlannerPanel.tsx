@@ -16,6 +16,18 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 
+function makeId(prefix: string): string {
+  try {
+    // Browser runtime
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const rnd = (globalThis as any)?.crypto?.randomUUID?.();
+    if (typeof rnd === "string" && rnd.length > 0) return `${prefix}-${rnd}`;
+  } catch {
+    // ignore
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
 export function MeetingPlannerPanel({
   members,
   meetings,
@@ -84,7 +96,7 @@ export function MeetingPlannerPanel({
   function createMeeting() {
     if (!meetingTitle.trim() || selectedParticipantIds.length === 0) return;
     const m: Meeting = {
-      id: `meeting-${Date.now()}`,
+      id: makeId("meeting"),
       title: meetingTitle.trim(),
       slot: meetingSlot,
       durationHours: 1,

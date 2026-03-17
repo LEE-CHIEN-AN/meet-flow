@@ -374,7 +374,14 @@ export default function MeetFlow() {
               }
               onNotify={(message) =>
                 setNotifications((prev) => [
-                  { id: `n-${Date.now()}`, message, createdAt: Date.now() },
+                  {
+                    id:
+                      (globalThis.crypto?.randomUUID
+                        ? `n-${globalThis.crypto.randomUUID()}`
+                        : `n-${Date.now()}-${Math.random().toString(16).slice(2)}`),
+                    message,
+                    createdAt: Date.now(),
+                  },
                   ...prev,
                 ])
               }
