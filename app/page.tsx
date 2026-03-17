@@ -86,6 +86,7 @@ export default function MeetFlow() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [activeTab, setActiveTab] = useState("members");
   const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
+  const [draftMeetingSlot, setDraftMeetingSlot] = useState<TimeSlot | null>(null);
 
   const me = members.find((m) => m.id === "me")!;
   const others = members.filter((m) => m.id !== "me");
@@ -388,8 +389,11 @@ export default function MeetFlow() {
               selectedMeetingId={selectedMeetingId}
               onSelectMeetingId={(id) => {
                 setSelectedMeetingId(id);
+                if (id) setDraftMeetingSlot(null);
                 if (id) setActiveTab("plan");
               }}
+              draftSlot={draftMeetingSlot}
+              onDraftSlotChange={setDraftMeetingSlot}
             />
           </TabsContent>
 
@@ -401,6 +405,12 @@ export default function MeetFlow() {
               changeLog={notifications}
               onOpenMeeting={(meetingId) => {
                 setSelectedMeetingId(meetingId);
+                setDraftMeetingSlot(null);
+                setActiveTab("plan");
+              }}
+              onCreateAtSlot={(s) => {
+                setSelectedMeetingId(null);
+                setDraftMeetingSlot(s);
                 setActiveTab("plan");
               }}
             />

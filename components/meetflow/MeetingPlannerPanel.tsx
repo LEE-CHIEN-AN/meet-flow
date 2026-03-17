@@ -36,6 +36,8 @@ export function MeetingPlannerPanel({
   onNotify,
   selectedMeetingId,
   onSelectMeetingId,
+  draftSlot,
+  onDraftSlotChange,
 }: {
   members: Member[];
   meetings: Meeting[];
@@ -44,6 +46,8 @@ export function MeetingPlannerPanel({
   onNotify: (message: string) => void;
   selectedMeetingId: string | null;
   onSelectMeetingId: (id: string | null) => void;
+  draftSlot: TimeSlot | null;
+  onDraftSlotChange: (slotId: TimeSlot | null) => void;
 }) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmMode, setConfirmMode] = useState<"update" | "apply_best" | null>(
@@ -93,6 +97,12 @@ export function MeetingPlannerPanel({
     setSelectedParticipantIds(m.participantIds);
   }, [meetings, selectedMeetingId]);
 
+  useEffect(() => {
+    if (selectedMeetingId) return;
+    if (!draftSlot) return;
+    setMeetingSlot(draftSlot);
+  }, [draftSlot, selectedMeetingId]);
+
   function createMeeting() {
     if (!meetingTitle.trim() || selectedParticipantIds.length === 0) return;
     const m: Meeting = {
@@ -106,6 +116,7 @@ export function MeetingPlannerPanel({
     };
     onCreateMeeting(m);
     onSelectMeetingId(null);
+    onDraftSlotChange(null);
     onNotify(`已建立會議「${m.title}」：${formatSlot(m.slot)}`);
   }
 
@@ -207,7 +218,10 @@ export function MeetingPlannerPanel({
               <select
                 className="w-full h-10 rounded-md border bg-background px-3 text-sm"
                 value={meetingSlot}
-                onChange={(e) => setMeetingSlot(e.target.value)}
+                onChange={(e) => {
+                  setMeetingSlot(e.target.value);
+                  onDraftSlotChange(e.target.value);
+                }}
               >
                 {candidateSlots.map((s) => (
                   <option key={s} value={s}>

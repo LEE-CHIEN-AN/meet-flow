@@ -23,11 +23,13 @@ export function TeamCalendarPanel({
   meetings,
   changeLog,
   onOpenMeeting,
+  onCreateAtSlot,
 }: {
   members: Member[];
   meetings: Meeting[];
   changeLog: NotificationItem[];
   onOpenMeeting: (meetingId: string) => void;
+  onCreateAtSlot: (slotId: string) => void;
 }) {
   const [filterParticipantId, setFilterParticipantId] = useState<string>("all");
 
@@ -106,13 +108,7 @@ export function TeamCalendarPanel({
                       const has = list.length > 0;
                       return (
                         <td key={d} className="align-top p-1">
-                          <div
-                            className={`min-h-12 rounded border p-2 ${
-                              has
-                                ? "bg-primary/5 border-primary/20"
-                                : "bg-muted/40 border-border"
-                            }`}
-                          >
+                          <div className="min-h-12 rounded border p-2 bg-background">
                             {has ? (
                               <div className="space-y-1.5">
                                 {list.slice(0, 3).map((m) => (
@@ -143,9 +139,14 @@ export function TeamCalendarPanel({
                                 )}
                               </div>
                             ) : (
-                              <p className="text-[11px] text-muted-foreground">
-                                —
-                              </p>
+                              <button
+                                type="button"
+                                className="w-full h-full min-h-12 rounded-md border border-dashed border-border bg-muted/30 hover:bg-muted/50 transition-colors flex items-center justify-center text-[11px] text-muted-foreground"
+                                onClick={() => onCreateAtSlot(s)}
+                                title={`在 ${formatSlot(s)} 新建會議`}
+                              >
+                                + 新建
+                              </button>
                             )}
                           </div>
                         </td>
