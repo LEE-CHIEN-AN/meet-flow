@@ -16,6 +16,7 @@ describe("conflicts", () => {
         slot: "0-9",
         durationHours: 1,
         participantIds: ["a"],
+        meetingType: "sync",
         priority: "normal",
         createdAt: 0,
       },

@@ -1,11 +1,40 @@
-import type { Meeting, Member, SlotSuggestion, TimeSlot } from "./types";
+import type {
+  Meeting,
+  MeetingPriority,
+  MeetingType,
+  Member,
+  SlotSuggestion,
+  TimeSlot,
+} from "./types";
 import { isMemberAvailable, isMemberBusy } from "./availability";
 
-function hourPenalty(s: TimeSlot): number {
-  // MVP: penalize late hours slightly to prefer earlier slots
+function hourPenalty(s: TimeSlot, args: { meetingType?: MeetingType }): number {
+  // Penalize late hours; meeting type can adjust strictness.
   const hour = Number(s.split("-")[1]);
   if (Number.isNaN(hour)) return 0;
-  return Math.max(0, hour - 14); // 15+ gets penalty
+  const lateStart =
+    args.meetingType === "decision"
+      ? 13
+      : args.meetingType === "discussion"
+        ? 15
+        : 14;
+  return Math.max(0, hour - lateStart); // meeting-type-dependent
+}
+
+function priorityWeights(priority: MeetingPriority | undefined): {
+  attendW: number;
+  busyW: number;
+  unavailW: number;
+} {
+  switch (priority) {
+    case "high":
+      return { attendW: 14, busyW: 9, unavailW: 4 };
+    case "low":
+      return { attendW: 7, busyW: 4, unavailW: 2 };
+    case "normal":
+    default:
+      return { attendW: 10, busyW: 6, unavailW: 3 };
+  }
 }
 
 export function recommendSlots(args: {
@@ -14,11 +43,23 @@ export function recommendSlots(args: {
   participantIds: string[];
   candidateSlots: TimeSlot[];
   limit: number;
+  meetingType?: MeetingType;
+  meetingPriority?: MeetingPriority;
 }): SlotSuggestion[] {
-  const { members, meetings, participantIds, candidateSlots, limit } = args;
+  const {
+    members,
+    meetings,
+    participantIds,
+    candidateSlots,
+    limit,
+    meetingType,
+    meetingPriority,
+  } = args;
   const participants = participantIds
     .map((id) => members.find((m) => m.id === id))
     .filter((m): m is Member => Boolean(m));
+
+  const w = priorityWeights(meetingPriority);
 
   const scored: SlotSuggestion[] = candidateSlots.map((slot) => {
     const availableParticipantIds: string[] = [];
@@ -39,10 +80,11 @@ export function recommendSlots(args: {
     // - prefer earlier time
     // - heavily penalize busy conflicts vs just "not in availability"
     const attend = availableParticipantIds.length;
-    const busyPenalty = busyParticipantIds.length * 6;
-    const unavailablePenalty = (unavailableParticipantIds.length - busyParticipantIds.length) * 3;
-    const timePenalty = hourPenalty(slot);
-    const score = attend * 10 - busyPenalty - unavailablePenalty - timePenalty;
+    const busyPenalty = busyParticipantIds.length * w.busyW;
+    const unavailablePenalty =
+      (unavailableParticipantIds.length - busyParticipantIds.length) * w.unavailW;
+    const timePenalty = hourPenalty(slot, { meetingType });
+    const score = attend * w.attendW - busyPenalty - unavailablePenalty - timePenalty;
 
     return {
       slot,

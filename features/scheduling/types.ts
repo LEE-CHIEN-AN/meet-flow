@@ -9,12 +9,15 @@ export type Member = {
 
 export type MeetingPriority = "low" | "normal" | "high";
 
+export type MeetingType = "decision" | "sync" | "discussion";
+
 export type Meeting = {
   id: string;
   title: string;
   slot: TimeSlot;
   durationHours: number;
   participantIds: string[];
+  meetingType: MeetingType;
   priority: MeetingPriority;
   createdAt: number;
 };

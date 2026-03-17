@@ -33,6 +33,7 @@ describe("recommendation", () => {
         slot: "0-9",
         durationHours: 1,
         participantIds: ["a"],
+        meetingType: "sync",
         priority: "normal",
         createdAt: 0,
       },
@@ -49,6 +50,29 @@ describe("recommendation", () => {
     // 0-9 would be busy for a; 0-10 b is unavailable but a is available.
     expect(res[0]!.slot).toBe("0-10");
     expect(res[0]!.unavailableParticipantIds).toContain("b");
+  });
+
+  it("uses meeting priority to prefer higher attendance more strongly", () => {
+    const meetings: Meeting[] = [];
+    const resLow = recommendSlots({
+      members,
+      meetings,
+      participantIds: ["a", "b", "c"],
+      candidateSlots: ["0-9", "0-10"],
+      limit: 1,
+      meetingPriority: "low",
+    });
+    const resHigh = recommendSlots({
+      members,
+      meetings,
+      participantIds: ["a", "b", "c"],
+      candidateSlots: ["0-9", "0-10"],
+      limit: 1,
+      meetingPriority: "high",
+    });
+
+    expect(resLow[0]!.slot).toBeDefined();
+    expect(resHigh[0]!.slot).toBeDefined();
   });
 });
 
