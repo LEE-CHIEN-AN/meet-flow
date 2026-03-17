@@ -5,6 +5,7 @@ export type Member = {
   name: string;
   color: string;
   availability: TimeSlot[];
+  externalBusy?: TimeSlot[]; // 模擬「整合外部行事曆」後匯入的忙碌時段
 };
 
 export type MeetingPriority = "low" | "normal" | "high";

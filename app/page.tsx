@@ -20,6 +20,7 @@ import { MeetingPlannerPanel } from "@/components/meetflow/MeetingPlannerPanel";
 import { Notifications, type NotificationItem } from "@/components/meetflow/Notifications";
 import { ScheduleGrid } from "@/components/meetflow/ScheduleGrid";
 import { TeamCalendarPanel } from "@/components/meetflow/TeamCalendarPanel";
+import { WorkloadPanel } from "@/components/meetflow/WorkloadPanel";
 import type { Member, TimeSlot, Meeting } from "@/features/scheduling/types";
 import { DAYS, HOURS, formatSlot, slot } from "@/features/scheduling/slot";
 import { commonSlots as computeCommonSlots } from "@/features/scheduling/availability";
@@ -51,6 +52,7 @@ const INITIAL_MEMBERS: Member[] = [
       slot(3, 14), slot(3, 15), slot(3, 16),         // Thu 14–17
       slot(4, 9),  slot(4, 10),                      // Fri 9–11
     ],
+    externalBusy: [slot(0, 10), slot(3, 15)], // 模擬 Google Calendar 忙碌
   },
   {
     id: "xiao-liang",
@@ -62,6 +64,7 @@ const INITIAL_MEMBERS: Member[] = [
       slot(2, 14), slot(2, 15), slot(2, 16),         // Wed 14–17
       slot(4, 9),  slot(4, 10),                      // Fri 9–11
     ],
+    externalBusy: [slot(2, 10)], // 模擬外部行程
   },
   {
     id: "lu-lu",
@@ -72,6 +75,7 @@ const INITIAL_MEMBERS: Member[] = [
       slot(2, 9),  slot(2, 10), slot(2, 11),         // Wed 9–12（共同）
       slot(3, 14), slot(3, 15),                      // Thu 14–16
     ],
+    externalBusy: [slot(2, 9)], // 模擬外部行程（會讓共同空閒變少）
   },
 ];
 
@@ -179,6 +183,10 @@ export default function MeetFlow() {
             <TabsTrigger value="team-calendar" className="gap-1.5 text-sm">
               <Calendar className="w-3.5 h-3.5" />
               團隊行事曆
+            </TabsTrigger>
+            <TabsTrigger value="workload" className="gap-1.5 text-sm">
+              <User className="w-3.5 h-3.5" />
+              負載
             </TabsTrigger>
           </TabsList>
 
@@ -431,6 +439,11 @@ export default function MeetFlow() {
                 setPlannerFocusNonce((x) => x + 1);
               }}
             />
+          </TabsContent>
+
+          {/* ── Tab 7: Workload ── */}
+          <TabsContent value="workload">
+            <WorkloadPanel members={members} meetings={meetings} />
           </TabsContent>
         </Tabs>
       </main>

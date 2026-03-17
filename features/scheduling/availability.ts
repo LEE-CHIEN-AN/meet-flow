@@ -24,6 +24,7 @@ export function isMemberAvailable(
   meetings: Meeting[]
 ): { available: boolean; reason?: "unavailable" | "busy" } {
   if (!member.availability.includes(s)) return { available: false, reason: "unavailable" };
+  if (member.externalBusy?.includes(s)) return { available: false, reason: "busy" };
   if (isMemberBusy(member.id, s, meetings)) return { available: false, reason: "busy" };
   return { available: true };
 }
