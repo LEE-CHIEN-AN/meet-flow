@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,22 +15,13 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Plus, Users, Calendar, User, CalendarCheck } from "lucide-react";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type TimeSlot = string; // "day-hour", e.g. "0-9" = Monday 9am
-
-type Member = {
-  id: string;
-  name: string;
-  color: string;
-  availability: TimeSlot[];
-};
+import { Legend } from "@/components/meetflow/Legend";
+import { ScheduleGrid } from "@/components/meetflow/ScheduleGrid";
+import type { Member, TimeSlot } from "@/features/scheduling/types";
+import { DAYS, HOURS, slot } from "@/features/scheduling/slot";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const DAYS = ["週一", "週二", "週三", "週四", "週五"];
-const HOURS = [9, 10, 11, 12, 13, 14, 15, 16, 17];
 const COLORS = [
   "bg-orange-500",
   "bg-pink-500",
@@ -40,8 +31,6 @@ const COLORS = [
   "bg-yellow-500",
   "bg-cyan-500",
 ];
-
-const slot = (day: number, hour: number): TimeSlot => `${day}-${hour}`;
 
 // ─── Fake initial data ────────────────────────────────────────────────────────
 
@@ -81,144 +70,6 @@ const INITIAL_MEMBERS: Member[] = [
     ],
   },
 ];
-
-// ─── Schedule Grid Component ──────────────────────────────────────────────────
-
-type DragState = {
-  startDay: number;
-  startHourIdx: number;
-  curDay: number;
-  curHourIdx: number;
-  filling: boolean; // true = turning slots ON, false = turning OFF
-};
-
-function ScheduleGrid({
-  availability,
-  onBatchToggle,
-  emerald = false,
-}: {
-  availability: TimeSlot[];
-  onBatchToggle?: (slots: TimeSlot[], fill: boolean) => void;
-  emerald?: boolean;
-}) {
-  const [drag, setDrag] = useState<DragState | null>(null);
-  const dragging = useRef(false);
-
-  // Commit the selection when mouse is released anywhere
-  useEffect(() => {
-    function handleMouseUp() {
-      if (!dragging.current || !drag) return;
-      const d0 = Math.min(drag.startDay, drag.curDay);
-      const d1 = Math.max(drag.startDay, drag.curDay);
-      const h0 = Math.min(drag.startHourIdx, drag.curHourIdx);
-      const h1 = Math.max(drag.startHourIdx, drag.curHourIdx);
-      const selected: TimeSlot[] = [];
-      for (let d = d0; d <= d1; d++)
-        for (let hi = h0; hi <= h1; hi++)
-          selected.push(slot(d, HOURS[hi]));
-      onBatchToggle?.(selected, drag.filling);
-      dragging.current = false;
-      setDrag(null);
-    }
-    document.addEventListener("mouseup", handleMouseUp);
-    return () => document.removeEventListener("mouseup", handleMouseUp);
-  }, [drag, onBatchToggle]);
-
-  function inDragRect(d: number, hi: number): boolean {
-    if (!drag) return false;
-    const d0 = Math.min(drag.startDay, drag.curDay);
-    const d1 = Math.max(drag.startDay, drag.curDay);
-    const h0 = Math.min(drag.startHourIdx, drag.curHourIdx);
-    const h1 = Math.max(drag.startHourIdx, drag.curHourIdx);
-    return d >= d0 && d <= d1 && hi >= h0 && hi <= h1;
-  }
-
-  return (
-    <div className="overflow-x-auto select-none">
-      <table className="w-full text-sm border-collapse">
-        <thead>
-          <tr>
-            <th className="w-14" />
-            {DAYS.map((d) => (
-              <th key={d} className="p-2 text-center font-medium text-sm">
-                {d}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {HOURS.map((h, hi) => (
-            <tr key={h}>
-              <td className="text-right pr-3 text-muted-foreground text-xs py-0.5 whitespace-nowrap">
-                {h}:00
-              </td>
-              {DAYS.map((_, d) => {
-                const s = slot(d, h);
-                const active = availability.includes(s);
-                const inRect = inDragRect(d, hi);
-
-                let cellClass: string;
-                if (inRect) {
-                  // Preview: show what the result will be
-                  cellClass = drag!.filling
-                    ? "bg-primary/60 border-primary/60"
-                    : "bg-muted border-border opacity-40";
-                } else if (active) {
-                  cellClass = emerald
-                    ? "bg-emerald-400 border-emerald-400"
-                    : "bg-primary border-primary";
-                } else {
-                  cellClass = "bg-muted border-border hover:bg-muted/60";
-                }
-
-                return (
-                  <td key={d} className="p-0.5">
-                    <div
-                      className={`h-8 rounded border transition-colors ${cellClass} ${onBatchToggle ? "cursor-pointer" : "cursor-default"}`}
-                      onMouseDown={(e) => {
-                        if (!onBatchToggle) return;
-                        e.preventDefault();
-                        dragging.current = true;
-                        setDrag({
-                          startDay: d,
-                          startHourIdx: hi,
-                          curDay: d,
-                          curHourIdx: hi,
-                          filling: !active,
-                        });
-                      }}
-                      onMouseOver={() => {
-                        if (!dragging.current) return;
-                        setDrag((prev) =>
-                          prev ? { ...prev, curDay: d, curHourIdx: hi } : prev
-                        );
-                      }}
-                    />
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ─── Legend ───────────────────────────────────────────────────────────────────
-
-function Legend({ items }: { items: { color: string; label: string }[] }) {
-  return (
-    <div className="flex gap-4 mb-5 text-xs text-muted-foreground">
-      {items.map((item) => (
-        <div key={item.label} className="flex items-center gap-1.5">
-          <div className={`w-3 h-3 rounded ${item.color}`} />
-          {item.label}
-        </div>
-      ))}
-    </div>
-  );
-}
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 
