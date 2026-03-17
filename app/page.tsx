@@ -359,6 +359,9 @@ export default function MeetFlow() {
               members={members}
               meetings={meetings}
               onCreateMeeting={(m) => setMeetings((prev) => [m, ...prev])}
+              onUpdateMeeting={(m) =>
+                setMeetings((prev) => prev.map((x) => (x.id === m.id ? m : x)))
+              }
             />
           </TabsContent>
         </Tabs>

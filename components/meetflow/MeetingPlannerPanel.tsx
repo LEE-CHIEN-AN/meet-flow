@@ -14,11 +14,14 @@ export function MeetingPlannerPanel({
   members,
   meetings,
   onCreateMeeting,
+  onUpdateMeeting,
 }: {
   members: Member[];
   meetings: Meeting[];
   onCreateMeeting: (meeting: Meeting) => void;
+  onUpdateMeeting: (meeting: Meeting) => void;
 }) {
+  const [selectedMeetingId, setSelectedMeetingId] = useState<string | null>(null);
   const [meetingTitle, setMeetingTitle] = useState("週會");
   const [meetingSlot, setMeetingSlot] = useState<TimeSlot>(slot(2, 9));
   const [selectedParticipantIds, setSelectedParticipantIds] = useState<string[]>(
@@ -65,6 +68,27 @@ export function MeetingPlannerPanel({
       createdAt: Date.now(),
     };
     onCreateMeeting(m);
+    setSelectedMeetingId(null);
+  }
+
+  function updateMeeting() {
+    if (!selectedMeetingId) return;
+    if (!meetingTitle.trim() || selectedParticipantIds.length === 0) return;
+    const existing = meetings.find((m) => m.id === selectedMeetingId);
+    if (!existing) return;
+    onUpdateMeeting({
+      ...existing,
+      title: meetingTitle.trim(),
+      slot: meetingSlot,
+      participantIds: selectedParticipantIds,
+    });
+  }
+
+  function loadMeeting(m: Meeting) {
+    setSelectedMeetingId(m.id);
+    setMeetingTitle(m.title);
+    setMeetingSlot(m.slot);
+    setSelectedParticipantIds(m.participantIds);
   }
 
   return (
@@ -79,7 +103,9 @@ export function MeetingPlannerPanel({
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base font-semibold">會議草稿</CardTitle>
+            <CardTitle className="text-base font-semibold">
+              {selectedMeetingId ? "編輯會議" : "會議草稿"}
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
@@ -136,12 +162,22 @@ export function MeetingPlannerPanel({
             </div>
 
             <Button
-              onClick={createMeeting}
+              onClick={selectedMeetingId ? updateMeeting : createMeeting}
               disabled={selectedParticipantIds.length === 0}
               className="w-full"
             >
-              建立會議
+              {selectedMeetingId ? "更新會議" : "建立會議"}
             </Button>
+
+            {selectedMeetingId && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setSelectedMeetingId(null)}
+              >
+                取消編輯
+              </Button>
+            )}
 
             {meetingConflicts.length > 0 ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
@@ -219,6 +255,41 @@ export function MeetingPlannerPanel({
                 })}
               </div>
             )}
+
+            <div className="pt-4 border-t">
+              <p className="text-sm font-medium mb-2">已建立的會議</p>
+              {meetings.length === 0 ? (
+                <p className="text-sm text-muted-foreground">尚未建立會議</p>
+              ) : (
+                <div className="space-y-2">
+                  {meetings.slice(0, 8).map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      className={`w-full text-left rounded-lg border p-3 hover:bg-muted/40 transition-colors ${
+                        selectedMeetingId === m.id ? "bg-muted/40" : ""
+                      }`}
+                      onClick={() => loadMeeting(m)}
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium text-sm">{m.title}</p>
+                        <Badge variant="outline" className="text-xs">
+                          {formatSlot(m.slot)}
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        參與者：
+                        {m.participantIds
+                          .map(
+                            (id) => members.find((mm) => mm.id === id)?.name ?? id
+                          )
+                          .join("、")}
+                      </p>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>
